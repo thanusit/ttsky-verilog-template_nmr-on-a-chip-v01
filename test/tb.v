@@ -20,7 +20,7 @@ module tb ();
  `endif
   
    // Replace tt_um_example with your module name(DUT instantiation):
-    tt_um_thanusit_cpmg_pulse_sequencer user_project (
+    tt_um_thanusit_nmr_cpmg_psq_rx user_project (
         // Include power ports for the Gate Level test:
        `ifdef GL_TEST
           .VPWR(VPWR),

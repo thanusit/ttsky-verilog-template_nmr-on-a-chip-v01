@@ -18,7 +18,7 @@ project:
   # Don't forget to also update `PROJECT_SOURCES` in test/Makefile.
   source_files:
   #  - "cpmg_pulse_sequencer.v"
-    - "project.v"
+    - "mnr_cores.v"
     - "pulse_sequencer.v"
   #  - "rf_transmitter.v"
   #  - "quadrature_demodulator.v"

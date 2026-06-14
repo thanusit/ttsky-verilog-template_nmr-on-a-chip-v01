@@ -5,7 +5,7 @@
 
 `default_nettype none
 
-module tt_um_thanusit_nmr_cpmg_psq (
+module tt_um_thanusit_nmr_cores (
     input  wire [7:0] ui_in,    // Dedicated inputs
     output wire [7:0] uo_out,   // Dedicated outputs
     input  wire [7:0] uio_in,   // IOs: Input path
@@ -16,4 +16,8 @@ module tt_um_thanusit_nmr_cpmg_psq (
     input  wire       rst_n     // reset_n - low to reset
 );
     
+// Unused bidirectionals assigned safely to zero inputs
+    assign uio_out = 8'b00000000;
+    assign uio_oe  = 8'b00000000;
+    assign uo_out[7:4] = 4'b0000;
   

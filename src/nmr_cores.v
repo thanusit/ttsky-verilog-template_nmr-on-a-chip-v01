@@ -3,6 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+// Notes on versions:
+   // v01: The top module instantiates only the pulse sequencer. All workflows were succesful.
+   // current: working on the quadrature demodulation instantiation 
+
 `default_nettype none
 
 module tt_um_thanusit_nmr_cores (
@@ -15,11 +19,19 @@ module tt_um_thanusit_nmr_cores (
     input  wire       clk,      // clock
     input  wire       rst_n     // reset_n - low to reset
 );
-     // Internal wires connecting the sub-module outputs to top pins or other blocks
+    // Internal wires connecting the pulse sequencer
     wire psq_rf_A;
     wire psq_rf_B;
     wire psq_rx_gate;
     wire psq_busy;
+
+    // Internal wires connecting the quadrature demodulator
+    wire rx_adc_in;
+    wire demod_i_out;
+    wire demod_q_out;
+
+    // Mapping inputs
+    assign rx_adc_in = ui_in[4]; // Assign input pin for incoming RF/NMR signal (e.g., 1-bit comparator ADC)
 
     // Instantiate CPMG Pulse Sequencer
     pulse_sequencer psq_inst (
@@ -29,10 +41,20 @@ module tt_um_thanusit_nmr_cores (
         .spi_sclk(ui_in[1]),
         .spi_mosi(ui_in[2]),
         .spi_ss_n(ui_in[3]),
-        .rf_pulse_A(psq_rf_A),   // This can also route to the Transmitter block
-        .rf_pulse_B(psq_rf_B),   // This can also route to the Transmitter block
-        .rx_gate(psq_rx_gate),    // This can also route to the Demodulator block
+        .rf_pulse_A(psq_rf_A),   
+        .rf_pulse_B(psq_rf_B),   
+        .rx_gate(psq_rx_gate),    
         .status_busy(psq_busy)
+    );
+
+    // Instantiate Quadrature Demodulator
+    quadrature_demodulator demod_inst (
+        .clk(clk),
+        .rst_n(rst_n),
+        .rx_gate(psq_rx_gate),    // Only demodulate when receiver window is open
+        .adc_in(rx_adc_in),       // Digitized RF signal input
+        .i_out(demod_i_out),       // Filtered In-phase (I) bitstream
+        .q_out(demod_q_out)        // Filtered Quadrature (Q) bitstream
     );
 
     // Bind internal outputs to the physical hardware output pins
@@ -40,10 +62,13 @@ module tt_um_thanusit_nmr_cores (
     assign uo_out[1] = psq_rf_B;
     assign uo_out[2] = psq_rx_gate;
     assign uo_out[3] = psq_busy;
+    assign uo_out[4] = demod_i_out; // Output filtered In-phase signal
+    assign uo_out[5] = demod_q_out; // Output filtered Quadrature signal
 
     // Cleanly tie off (forcing to 0) the remaining unused pins
-    assign uo_out[7:4] = 4'b0000;
+    assign uo_out[7:6] = 2'b00;
     assign uio_out     = 8'b00000000;
     assign uio_oe      = 8'b00000000;
 
-endmodule   
+endmodule
+

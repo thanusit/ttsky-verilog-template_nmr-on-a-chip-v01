@@ -41,7 +41,7 @@ module tt_um_thanusit_nmr_cores (
     assign uo_out[2] = psq_rx_gate;
     assign uo_out[3] = psq_busy;
 
-    // Cleanly tie off the remaining unused pins
+    // Cleanly tie off (forcing to 0) the remaining unused pins
     assign uo_out[7:4] = 4'b0000;
     assign uio_out     = 8'b00000000;
     assign uio_oe      = 8'b00000000;

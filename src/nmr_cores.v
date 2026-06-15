@@ -29,9 +29,9 @@ module tt_um_thanusit_nmr_cores (
         .spi_sclk(ui_in[1]),
         .spi_mosi(ui_in[2]),
         .spi_ss_n(ui_in[3]),
-        .rf_pulse_A(psq_rf_A), // This can also route to your Transmitter block
-        .rf_pulse_B(psq_rf_B), // This can also route to your Transmitter block
-        .rx_gate(psq_rx_gate),       // This can also route to your Demodulator block
+        .rf_pulse_A(psq_rf_A),   // This can also route to the Transmitter block
+        .rf_pulse_B(psq_rf_B),   // This can also route to the Transmitter block
+        .rx_gate(psq_rx_gate),    // This can also route to the Demodulator block
         .status_busy(psq_busy)
     );
 

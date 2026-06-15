@@ -39,7 +39,7 @@ module pulse_sequencer (
         end
     end
 
-    // Parallel load on rising edge of SS_N
+    // Parallel load pulse sequence parameters on rising edge of SS_N
     always @(posedge spi_ss_n or negedge rst_n) begin
         if (!rst_n) begin
             cfg_tA          <= 32'd10;   

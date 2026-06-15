@@ -3,10 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// Notes on versions:
-   // v01: The top module instantiates only the pulse sequencer. All workflows were succesful.
-   // current: working on the quadrature demodulation instantiation 
-
 `default_nettype none
 
 module tt_um_thanusit_nmr_cores (
@@ -14,24 +10,20 @@ module tt_um_thanusit_nmr_cores (
     output wire [7:0] uo_out,   // Dedicated outputs
     input  wire [7:0] uio_in,   // IOs: Input path
     output wire [7:0] uio_out,  // IOs: Output path
-    output wire [7:0] uio_oe,   // IOs: Enable path (active high: 0=input, 1=output)
+    output wire [7:0] uio_oe,   // IOs: Enable path (active high)
     input  wire       ena,      // always 1 when design is powered
     input  wire       clk,      // clock
     input  wire       rst_n     // reset_n - low to reset
 );
-    // Internal wires connecting the pulse sequencer
+
+    // Internal wires connecting the sub-module outputs
     wire psq_rf_A;
     wire psq_rf_B;
     wire psq_rx_gate;
     wire psq_busy;
-
-    // Internal wires connecting the quadrature demodulator
-    wire rx_adc_in;
-    wire demod_i_out;
-    wire demod_q_out;
-
-    // Mapping inputs
-    assign rx_adc_in = ui_in[4]; // Assign input pin for incoming RF/NMR signal (e.g., 1-bit comparator ADC)
+    
+    wire [7:0] demod_i;
+    wire [7:0] demod_q;
 
     // Instantiate CPMG Pulse Sequencer
     pulse_sequencer psq_inst (
@@ -43,7 +35,7 @@ module tt_um_thanusit_nmr_cores (
         .spi_ss_n(ui_in[3]),
         .rf_pulse_A(psq_rf_A),   
         .rf_pulse_B(psq_rf_B),   
-        .rx_gate(psq_rx_gate),    
+        .rx_gate(psq_rx_gate),   
         .status_busy(psq_busy)
     );
 
@@ -51,24 +43,27 @@ module tt_um_thanusit_nmr_cores (
     quadrature_demodulator demod_inst (
         .clk(clk),
         .rst_n(rst_n),
-        .rx_gate(psq_rx_gate),    // Only demodulate when receiver window is open
-        .adc_in(rx_adc_in),       // Digitized RF signal input
-        .i_out(demod_i_out),       // Filtered In-phase (I) bitstream
-        .q_out(demod_q_out)        // Filtered Quadrature (Q) bitstream
+        .rx_gate(psq_rx_gate),   // Gated processing window directly from sequencer
+        .rx_in(ui_in[4]),        // 1-Bit Digitized RF Input Signal mapped to pin 4
+        .i_out(demod_i),
+        .q_out(demod_q)
     );
 
-    // Bind internal outputs to the physical hardware output pins
+    // Bind physical dedicated output pins
     assign uo_out[0] = psq_rf_A;
     assign uo_out[1] = psq_rf_B;
     assign uo_out[2] = psq_rx_gate;
     assign uo_out[3] = psq_busy;
-    assign uo_out[4] = demod_i_out; // Output filtered In-phase signal
-    assign uo_out[5] = demod_q_out; // Output filtered Quadrature signal
+    
+    // Output the lower 4 bits of I and Q streams to dedicated output pins 4-7
+    assign uo_out[5:4] = demod_i[1:0];
+    assign uo_out[7:6] = demod_q[1:0];
 
-    // Cleanly tie off (forcing to 0) the remaining unused pins
-    assign uo_out[7:6] = 2'b00;
-    assign uio_out     = 8'b00000000;
-    assign uio_oe      = 8'b00000000;
+    // Map remaining upper 6 bits of I and Q streams over the bi-directional bus
+    assign uio_out[3:0] = demod_i[5:2];
+    assign uio_out[7:4] = demod_q[5:2];
+    
+    // Set all Bidirectional IOs explicitly as outputs (Active-High Output Enable)
+    assign uio_oe = 8'b11111111;
 
 endmodule
-

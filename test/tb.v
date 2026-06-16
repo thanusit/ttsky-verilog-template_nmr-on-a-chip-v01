@@ -119,9 +119,9 @@ module tb;
         uio_in = 8'h00;
 
         // Step 1: System Boot and Power Reset execution
-        #(100);
-        reset_system();
-        #(100);
+      //  #(100);
+      //  reset_system();
+      //  #(100);
 
         // Step 2: Push 128-bit sequence limits to internal configuration registers
         // Params: tA=6 cycles, tau=35 cycles, tB=12 cycles, echo_count=2 loops

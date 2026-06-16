@@ -57,18 +57,18 @@ module tb;
     // -------------------------------------------------------------------------
     
     // Task: System-Wide Active-Low Reset Initialization
-    task reset_system;
-    begin
-        $display("[TB] Asserting Master Reset Vector...");
-        rst_n = 1'b0;
-        ui_in  = 8'h08; // Set spi_ss_n = 1 (inactive), all others 0
-        uio_in = 8'h00;
-        #(100);
-        @(posedge clk);
-        #1 rst_n = 1'b1;
-        $display("[TB] Master Reset Released Successfully.");
-    end
-    endtask
+   // task reset_system;
+   // begin
+   //     $display("[TB] Asserting Master Reset Vector...");
+   //     rst_n = 1'b0;
+   //     ui_in  = 8'h08; // Set spi_ss_n = 1 (inactive), all others 0
+   //     uio_in = 8'h00;
+   //     #(100);
+   //     @(posedge clk);
+   //     #1 rst_n = 1'b1;
+   //     $display("[TB] Master Reset Released Successfully.");
+   // end
+   // endtask
 
     // Task: Streams full 128-bit pulse sequence config register array
     task configure_sequencer(

@@ -22,21 +22,7 @@ module tb;
     wire [7:0] uio_out;
     wire [7:0] uio_oe;
 
-    // -------------------------------------------------------------------------
-    // Exact Map for TinyTapeout / OpenLane Port Pins
-    // -------------------------------------------------------------------------
-    // ui_in map:
-    // [0] = start
-    // [1] = spi_sclk (configuration clock input)
-    // [2] = spi_mosi
-    // [3] = spi_ss_n (active-low register load line)
-    // [4] = rx_in (1-bit digitized RF stream input)
-    // [5] = ui_in_gate (referenced in demodulator output logic)
-    
-    // uio_in map:
-    // [0] = uio_in_gate (referenced in demodulator output logic)
-
-    // Dedicated Output Port Aliases (uo_out)
+   // Dedicated Output Port Aliases (uo_out)
     wire rf_pulse_A   = uo_out[0];
     wire rf_pulse_B   = uo_out[1];
     wire rx_gate      = uo_out[2];
@@ -48,7 +34,7 @@ module tb;
     // -------------------------------------------------------------------------
     // Device Under Test (DUT) Instantiation
     // -------------------------------------------------------------------------
-    tt_um_thanusit_nmr_cores uut (
+    tt_um_thanusit_nmr_cores user_project (
         .ui_in(ui_in),
         .uo_out(uo_out),
         .uio_in(uio_in),
@@ -63,7 +49,7 @@ module tb;
     // Clock Generation (20 MHz System Clock -> 50ns cycle period)
     // -------------------------------------------------------------------------
     always begin
-        #25 clk = ~clk;
+        #10 clk = ~clk;
     end
 
     // -------------------------------------------------------------------------

@@ -97,15 +97,15 @@ module quadrature_demodulator (
         end
     end
 
-    // Output assignment (casts internal signed registers to top-level raw wires)
+// Output assignment (casts internal signed registers to top-level raw wires)
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
             i_out <= 8'h00;
             q_out <= 8'h00;
         end else begin
-            i_out <= ui_in_gate ? i_out : uio_in_gate ;
-            i_out <= rx_gate ? $unsigned(acc_i) : 8'h00;
-            q_out <= rx_gate ? $unsigned(acc_q) : 8'h00;
+            // Corrected logical condition
+            i_out <= rx_gate ? (ui_in_gate ? i_out : uio_in_gate) : $unsigned(acc_i);
+            q_out <= rx_gate ? (ui_in_gate ? q_out : uio_in_gate) : $unsigned(acc_q);
         end
     end
 

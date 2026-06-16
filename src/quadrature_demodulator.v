@@ -104,8 +104,8 @@ module quadrature_demodulator (
             q_out <= 8'h00;
         end else begin
             // Corrected logical condition
-            i_out <= rx_gate ? (ui_in_gate ? i_out : uio_in_gate) : $unsigned(acc_i);
-            q_out <= rx_gate ? (ui_in_gate ? q_out : uio_in_gate) : $unsigned(acc_q);
+              i_out <= rx_gate ? $unsigned(acc_i) : 8'h00;
+              q_out <= rx_gate ? $unsigned(acc_q) : 8'h00;
         end
     end
 

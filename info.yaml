@@ -17,11 +17,10 @@ project:
   # Source files must be in ./src and you must list each source file separately, one per line.
   # Don't forget to also update `PROJECT_SOURCES` in test/Makefile.
   source_files:
-  #  - "cpmg_pulse_sequencer.v"
-    - "nmr_cores.v"
-    - "pulse_sequencer.v"
-  #  - "rf_transmitter.v"
-  #  - "quadrature_demodulator.v"
+     - spi_tx.v
+     - "quadrature_demodulator.v"
+     - "pulse_sequencer.v"
+     - "nmr_cores.v"
 
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).

@@ -122,8 +122,8 @@ module tb;
     // -------------------------------------------------------------------------
     initial begin
         // Setup waveform tracking output files for GTKWave/ModelSim
-        $dumpfile("tb_tt_um_thanusit_nmr_cores.vcd");
-        $dumpvars(0, tb_tt_um_thanusit_nmr_cores);
+        $dumpfile("tb.vcd");
+        $dumpvars(0, tb);
 
         // Establish safe power-on initial hardware vector
         clk    = 1'b0;

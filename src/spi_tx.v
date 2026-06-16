@@ -18,40 +18,49 @@ module spi_tx (
 
     reg [15:0] shift_reg;
     reg [4:0]  bit_count;
-    reg        clk_div;
+    reg [1:0]  phase_counter; // Tracks 4 quadrants of an SCLK cycle
 
     always @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            shift_reg <= 16'h0000;
-            bit_count <= 5'd0;
-            spi_sclk  <= 1'b0;
-            spi_miso  <= 1'b0;
-            spi_busy  <= 1'b0;
-            clk_div   <= 1'b0;
+            shift_reg     <= 16'h0000;
+            bit_count     <= 5'd0;
+            spi_sclk      <= 1'b0;
+            spi_miso      <= 1'b0;
+            spi_busy      <= 1'b0;
+            phase_counter <= 2'b00;
         end else begin
             if (trig_load && !spi_busy) begin
-                // Capture full 8-bit resolutions side-by-side
-                shift_reg <= {data_i, data_q};
-                bit_count <= 5'd16;
-                spi_busy  <= 1'b1;
-                clk_div   <= 1'b0;
-                spi_sclk  <= 1'b0;
+                shift_reg     <= {data_i, data_q};
+                bit_count     <= 5'd16;
+                spi_busy      <= 1'b1;
+                phase_counter <= 2'b00;
+                spi_sclk      <= 1'b0;
+                spi_miso      <= data_i[7]; // Pre-drive first MSB out immediately
             end else if (spi_busy) begin
-                clk_div <= !clk_div;
+                phase_counter <= phase_counter + 1'b1;
                 
-                // Generate SCLK by splitting the main clock cycle
-                if (clk_div == 1'b0) begin
-                    spi_miso <= shift_reg[15]; // Drive out MSB first
-                    spi_sclk <= 1'b1;          // Rising edge
-                end else begin
-                    spi_sclk  <= 1'b0;         // Falling edge
-                    shift_reg <= {shift_reg[14:0], 1'b0}; // Shift left
-                    bit_count <= bit_count - 1'b1;
-                    
-                    if (bit_count == 5'd1) begin
-                        spi_busy <= 1'b0;      // All 16 bits sent
+                case (phase_counter)
+                    2'b00: begin
+                        spi_sclk <= 1'b1; // Rising Edge: Host samples stable data here
                     end
-                end
+                    2'b10: begin
+                        spi_sclk <= 1'b0; // Falling Edge: Safe to transition data now
+                    end
+                    2'b11: begin
+                        // Shift next register element forward
+                        shift_reg <= {shift_reg[14:0], 1'b0};
+                        bit_count <= bit_count - 1'b1;
+                        
+                        if (bit_count == 5'd1) begin
+                            spi_busy <= 1'b0; // Finished all 16 bits cleanly
+                        end else begin
+                            spi_miso <= shift_reg[14]; // Drive next bit out early
+                        end
+                    end
+                    default: begin
+                        // Do nothing during intermediate stability phases
+                    end
+                endcase
             end else begin
                 spi_sclk <= 1'b0;
                 spi_miso <= 1'b0;

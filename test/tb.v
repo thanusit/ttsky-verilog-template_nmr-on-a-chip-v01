@@ -7,7 +7,7 @@
 `timescale 1ns / 1ps
 `default_nettype none
 
-module tb_tt_um_thanusit_nmr_cores;
+module tb;
 
     // -------------------------------------------------------------------------
     // Testbench Wire and Register Declarations

@@ -1,167 +1,120 @@
-/*
- * Copyright (c) 2026 Thanusit Burinprakhon
- * SPDX-License-Identifier: Apache-2.0
- */
-
-`timescale 1ns / 1ps
 `default_nettype none
+`timescale 1ns / 1ps
 
-module tb;
-
-    // -------------------------------------------------------------------------
-    // Testbench Wire and Register Declarations
-    // -------------------------------------------------------------------------
+/* This testbench just instantiates the module and makes some convenient wires
+   that can be driven / tested by the cocotb test.py.
+*/
+module tb ();
+  // Wire up the inputs and outputs:
+    reg clk;
+    reg rst_n;
+    reg ena;
     reg [7:0] ui_in;
     reg [7:0] uio_in;
-    reg       ena;
-    reg       clk;
-    reg       rst_n;
-
     wire [7:0] uo_out;
     wire [7:0] uio_out;
     wire [7:0] uio_oe;
-
-    // Dedicated Output Port Aliases
-    wire rf_pulse_A   = uo_out[0];
-    wire rf_pulse_B   = uo_out[1];
-    wire rx_gate      = uo_out[2];
-    wire status_busy  = uo_out[3];
-    wire spi_out_sclk = uo_out[4];
-    wire spi_out_miso = uo_out[5];
-    wire spi_out_busy = uo_out[6];
-
-    // Track testbench echo counting internally
-    integer echo_idx;
-
-    // -------------------------------------------------------------------------
-    // Device Under Test (DUT) Instantiation
-    // -------------------------------------------------------------------------
+ `ifdef GL_TEST
+    wire VPWR = 1'b1;
+    wire VGND = 1'b0;
+ `endif
+  
+   // Replace tt_um_example with your module name(DUT instantiation):
     tt_um_thanusit_nmr_cores user_project (
-        .ui_in(ui_in), .uo_out(uo_out),
-        .uio_in(uio_in), .uio_out(uio_out), .uio_oe(uio_oe),
-        .ena(ena), .clk(clk), .rst_n(rst_n)
+        // Include power ports for the Gate Level test:
+       `ifdef GL_TEST
+          .VPWR(VPWR),
+          .VGND(VGND),
+       `endif
+          .ui_in  (ui_in),    // Dedicated inputs
+          .uo_out (uo_out),   // Dedicated outputs
+          .uio_in (uio_in),   // IOs: Input path
+          .uio_out(uio_out),  // IOs: Output path
+          .uio_oe (uio_oe),   // IOs: Enable path (active high: 0=input, 1=output)
+          .ena    (ena),      // enable - goes high when design is selected
+          .clk    (clk),      // clock
+          .rst_n  (rst_n)     // not reset
     );
 
-    // -------------------------------------------------------------------------
-    // Clock Generation (20 MHz System Clock -> 50ns cycle period)
-    // -------------------------------------------------------------------------
-    always #25 clk = ~clk;
+  // Watch aliases
+    wire rf_pulse_A = uo_out[0];
+    wire rf_pulse_B = uo_out[1];
+    wire rx_gate    = uo_out[2];
+    wire status_busy = uo_out[3];
 
-    // -------------------------------------------------------------------------
-    // Digitized RF Input Signal Generator (Simulates Echo Signal Ingestion)
-    // -------------------------------------------------------------------------
-    // Toggles a mock 5 MHz alternating signal into ui_in[4] ONLY when rx_gate is active.
-    always begin
-        #50; // Check every 50ns
-        if (rx_gate) begin
-            ui_in[4] = ~ui_in[4]; 
-        end else begin
-            ui_in[4] = 1'b0; // Quiet baseline when gate is closed
-        end
-    end
+  // Clock generator (50MHz -> 20ns period)
+    always #10 clk = ~clk;
 
-    // -------------------------------------------------------------------------
-    // Main Test Vector Execution Flow
-    // -------------------------------------------------------------------------
-    initial begin
-        // 1. Initialize safe startup states
-        clk    = 1'b0;
-        rst_n  = 1'b1;
-        ena    = 1'b1;
-        uio_in = 8'h00;
-        ui_in  = 8'h08; // Set pin 3 (spi_ss_n) = 1, all others 0
-
-        #100;
-        reset_system();
-        #100;
-
-        // 2. Program multi-echo sequence parameters via SPI
-        // Frame format: [tA(32-bit)][tau(32-bit)][tB(32-bit)][echo_count(32-bit)]
-        // We set echo_count = 4 to verify 4 back-to-back windows!
-        $display("[%t] [TB] Streaming 128-bit config payload (Echo Count = 4)...", $time);
-        spi_write_128({32'd10, 32'd50, 32'd20, 32'd4});
-        #200;
-
-        // 3. Fire the sequence
-        $display("[%t] [TB] Pulsing start trigger...", $time);
-        @(negedge clk);
-        ui_in[0] = 1'b1; // Drive ui_in[0] (start) high
-        @(negedge clk);
-        ui_in[0] = 1'b0; // Return start low
-
-        // 4. Trace and handle back-to-back echo transmissions dynamically
-        fork
-            // Thread A: Monitor the master sequencer lifecycle
-            begin
-                @(posedge status_busy);
-                $display("[%t] [TB] Master sequencer loop entered busy operational state.", $time);
-                @(negedge status_busy);
-                $display("[%t] [TB] Master sequencer loop finished all planned echoes.", $time);
-            end
-
-            // Thread B: Capture and print each back-to-back SPI data readout train
-            begin
-                for (echo_idx = 1; echo_idx <= 4; echo_idx = echo_idx + 1) begin
-                    // Monitor when the readout engine begins serialization for this echo window
-                    @(posedge spi_out_busy);
-                    $display("[%t] [TB] >>> Echo #%0d SPI readout transmission started.", $time, echo_idx);
-                    
-                    // Optional: Monitor the incoming bits on spi_out_miso here if desired
-                    
-                    @(negedge spi_out_busy);
-                    $display("[%t] [TB] <<< Echo #%0d SPI readout transmission completed.", $time, echo_idx);
-                end
-            end
-        join
-
-        // 5. Finalize execution run
-        #1000;
-        $display("[%t] [TB] Back-to-back echo simulation verified successfully.", $time);
-        $finish;
-    end
-
-    // -------------------------------------------------------------------------
-    // Hardware Simulation Control Tasks
-    // -------------------------------------------------------------------------
-    
-    task reset_system;
-    begin
-        $display("[%t] [TB] Asserting active-low hardware reset...", $time);
-        rst_n = 1'b0;
-        ui_in[3] = 1'b1; // Keep spi_ss_n deasserted
-        ui_in[0] = 1'b0; // Keep start deasserted
-        #(100);
-        rst_n = 1'b1;
-        $display("[%t] [TB] Reset released.", $time);
-    end
-    endtask
-
-    // Safely shift config bits over the SPI lines to the pulse sequencer
-    task spi_write_128(input [127:0] data_payload);
+  // SPI Configuration Master emulation task
+    task spi_send_word(input [127:0] data_stream);
         integer i;
         begin
-            ui_in[3] = 1'b0; // Pull spi_ss_n LOW
-            ui_in[1] = 1'b0; // Clear spi_sclk
-            #50;
-
+            ui_in[3] = 1'b0; // Pull SS_N Low
+            #40;
             for (i = 127; i >= 0; i = i - 1) begin
-                ui_in[2] = data_payload[i]; // Assign ui_in[2] (spi_mosi)
-                #50;
-                ui_in[1] = 1'b1;             // Toggle spi_sclk High
-                #50;
-                ui_in[1] = 1'b0;             // Toggle spi_sclk Low
+                ui_in[2] = data_stream[i]; // Set MOSI bit
+                #20;
+                ui_in[1] = 1'b1;           // SCLK High
+                #40;
+                ui_in[1] = 1'b0;           // SCLK Low
+                #20;
             end
-            
-            #50;
-            ui_in[3] = 1'b1; // Snap spi_ss_n HIGH to trigger parallel parameter load
+            #40;
+            ui_in[3] = 1'b1; // Pull SS_N High (Applies Config changes)
             #100;
         end
     endtask
 
-    // VCD Dump Routine
     initial begin
-        $dumpfile("back_to_back_echoes.vcd");
-        $dumpvars(0, tb);
-    end
+        // Initialize Inputs
+        clk    = 0;
+        rst_n  = 0;
+        ui_in  = 8'h08; // SS_N initialized high, all others low
+        uio_in = 8'h00;
 
+       // Reset Sequence
+        #100;
+        rst_n = 1;
+        #100;
+
+        // Configuration values setup: 
+       // Data arrangement: ({cfg_tA, tau, cfg_tB, cfg_echo_count})
+       // Example: ({32'd10, 32'd40, 32'd20, 32'd4}) outputs cfg_tA=10, tau=40, cfg_tB=20, 
+       // and cfg_echo_count=4 to the SPI 128-bits shift register.
+        $display("[TB] Sending configuration packet over SPI interface...");
+       spi_send_word({32'd10, 32'd40, 32'd20, 32'd4});
+
+        // Trigger pulse sequencing sequence execution
+        $display("[TB] Pulsing START to activate sequence execution.");
+        #40;
+        ui_in[0] = 1'b1; // Start high
+        #20;
+        ui_in[0] = 1'b0; // Start low
+
+        // Track outputs down active sequencing states
+        @(posedge rf_pulse_A);
+        $display("[TB] Detected 90-degree RF channel excitation start.");
+        
+        @(posedge rf_pulse_B);
+        $display("[TB] Detected 180-degree refocusing RF pulse start.");
+        
+        @(posedge rx_gate);
+        $display("[TB] Data Acquisition window active.");
+
+        // Wait until completion
+        @(negedge status_busy);
+        $display("[TB] Sequencer finished sequence and returned to IDLE.");
+
+        #200;
+        $display("[TB] Simulation completed successfully.");
+        $finish;
+    end
+  
+   // Dump the signals to a FST file. You can view it with gtkwave or surfer.
+    initial begin
+      $dumpfile("tb.vcd");
+      $dumpvars(0, tb);
+      #1;
+   end
+   
 endmodule
